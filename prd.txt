@@ -1,0 +1,119 @@
+1. Objective
+Guide a realistic cow across unevenly spaced tower-islands in a side-scrolling ocean world.
+
+The cow moves forward automatically.
+
+Players use their voice to jump.
+
+Survive 1 minute while avoiding obstacles.
+
+2. Game Duration
+Each round lasts 60 seconds.
+
+If the player survives, they see a Victory Screen.
+
+If they fall in the ocean or hit an obstacle, Game Over early.
+
+3. Controls
+Microphone Input (decibel-based):
+
+0–44 dB → Cow walks forward normally.
+
+≥45 dB → Cow jumps.
+
+Louder = higher jump arc.
+
+4. Core Gameplay
+Cow walks automatically at steady pace.
+
+Player must yell/shout “Moo” (or any loud sound).
+
+The louder the sound → the higher the cow leaps.
+
+Land safely on green tower-islands to continue.
+
+Obstacles (thorns, nails, spikes, etc.) appear on some islands:
+
+Hitting obstacle = Game Over.
+
+5. Environment Design
+Perspective: Side-view 2D platformer.
+
+Ocean: Wide blue strip as base.
+
+Islands: Green tower-like blocks with brown bases, randomly spaced.
+
+Obstacles: Spikes, nails, thorny bushes (on top of islands).
+
+6. Game Rules
+Unequal distance between islands (randomly spaced).
+
+At least 10 obstacles must appear during a 1-minute session.
+
+Touching water = fail.
+
+Touching obstacle = fail.
+
+Survive full 60s = win.
+
+7. Scoring & Feedback
+Score = number of islands successfully crossed.
+
+Bonus points for clearing obstacle-heavy islands.
+
+HUD Elements:
+
+Timer (countdown from 60s).
+
+Score (top-center).
+
+Mic volume bar (bottom).
+
+8. Visual Style
+Cow: Realistic sprite (cartoon-realism blend).
+
+Islands: Varying widths, topped with grass.
+
+Ocean: Flat blue base with slight wave animation.
+
+Obstacles: Sharp, spiky shapes (visible but not distracting).
+
+9. Difficulty & Ragebait Features
+Unequal gaps → sometimes easy, sometimes almost impossible.
+
+Random obstacle placement keeps players guessing.
+
+Voice sensitivity makes overshooting common.
+
+“Fail” animations:
+
+Splash + sad moo when cow falls.
+
+Ouch animation when cow hits spikes.
+
+10. Technical Plan (Cursor Build)
+HTML5 Canvas + JavaScript → core game loop.
+
+Web Audio API → capture mic input (decibel detection).
+
+Game Loop →
+
+Update cow position + jump height.
+
+Spawn islands + obstacles.
+
+Detect collisions (island, obstacle, ocean).
+
+Update timer + score.
+
+Random Generation:
+
+Unequal distance between islands.
+
+At least 10 obstacles placed randomly.
+
+Storage: Local best score (using localStorage).
+
+Deployment: GitHub Pages.
+
+11. Fu
