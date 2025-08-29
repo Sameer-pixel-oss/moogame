@@ -5,7 +5,7 @@ const GAME_WIDTH = 960;
 const GAME_HEIGHT = 540;
 const FLOOR_Y = GAME_HEIGHT * 0.75; // Ocean baseline
 const ROUND_SECONDS = 60;
-const MIC_THRESHOLD_DB = 45; // >=45 dB triggers jump
+const MIC_THRESHOLD_DB = 40; // >=40 dB enables movement and flight thrust
 const MIN_OBSTACLES_PER_ROUND = 10;
 
 // Canvas
@@ -52,25 +52,18 @@ class Cow {
     this.height = 40;
     this.velY = 0;
     this.gravity = 1600; // px/s^2
-    this.jumpBase = 520; // base jump velocity for 45 dB
-    this.jumpScale = 14; // extra per dB over threshold
-    this.walkSpeed = 180; // px/s world scroll speed
+    this.liftScale = 55; // px/s^2 per dB over threshold (more responsive)
+    this.walkSpeed = 180; // px/s world scroll speed (applied only when voice)
     this.onGround = false;
     this.inWater = false;
   }
 
-  tryJump(db) {
-    if (db < MIC_THRESHOLD_DB) return;
-    const over = Math.max(0, db - MIC_THRESHOLD_DB);
-    const jumpVelocity = this.jumpBase + over * this.jumpScale;
-    if (this.onGround) {
-      this.velY = -jumpVelocity;
-      this.onGround = false;
-    }
-  }
-
-  update(dt, platforms) {
-    this.velY += this.gravity * dt;
+  update(dt, platforms, db) {
+    // Apply gravity minus any upward thrust from voice
+    const over = Math.max(0, (db || 0) - MIC_THRESHOLD_DB);
+    const liftAccel = over > 0 ? over * this.liftScale : 0;
+    const netAccel = this.gravity - liftAccel;
+    this.velY += netAccel * dt;
     this.y += this.velY * dt;
 
     // Check collision with platforms from top
@@ -98,6 +91,12 @@ class Cow {
     if (this.y + this.height > FLOOR_Y + 4) {
       this.inWater = true;
       endGame(false, `You splashed after ${score} islands`);
+    }
+
+    // Clamp to not fly off the top of the screen
+    if (this.y < 10) {
+      this.y = 10;
+      if (this.velY < 0) this.velY = 0;
     }
   }
 
@@ -205,8 +204,22 @@ function resetGame() {
   nextPlatformX = GAME_WIDTH * 0.5;
   obstacleCountThisRound = 0;
   cow = new Cow();
+  centerOverlay.classList.remove("visible");
   centerOverlay.classList.add("hidden");
   resultOverlay.classList.add("hidden");
+
+  // Create a starting island under the cow so the game doesn't begin in water
+  const startWidth = 320;
+  const startX = Math.max(0, cow.x - startWidth * 0.4);
+  const startPlatform = new Platform(startX, startWidth);
+  platforms.push(startPlatform);
+  // Place cow on top of starting platform
+  cow.y = startPlatform.y - cow.height;
+  cow.velY = 0;
+  cow.onGround = true;
+  // Advance the next spawn position after the starting platform and an initial gap
+  const initialGap = 180;
+  nextPlatformX = startPlatform.x + startPlatform.width + initialGap;
 }
 
 // Platform/Obstacle generation
@@ -325,15 +338,15 @@ function update(dt) {
   }
 
   // World scroll via moving platforms left
-  const speed = cow.walkSpeed;
-  for (let i = 0; i < platforms.length; i++) {
-    platforms[i].update(dt, speed);
-  }
+  // Move world only when voice above threshold
+  const speaking = lastDb >= MIC_THRESHOLD_DB;
+  const speed = speaking ? cow.walkSpeed : 0;
+  for (let i = 0; i < platforms.length; i++) platforms[i].update(dt, speed);
   platforms = platforms.filter(p => p.visible);
   maybeSpawn();
 
   // Cow physics and collisions
-  cow.update(dt, platforms);
+  cow.update(dt, platforms, speaking ? lastDb : 0);
   checkObstacleCollision();
   updateScore();
 }
@@ -397,7 +410,7 @@ function updateMicUI(db) {
 function micLoop() {
   const db = getDecibels();
   updateMicUI(db);
-  if (gameStarted && !gameOver) cow.tryJump(db);
+  // Flight control is handled in update() via lastDb
   requestAnimationFrame(micLoop);
 }
 
