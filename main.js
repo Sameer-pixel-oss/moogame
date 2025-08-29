@@ -5,16 +5,16 @@ const GAME_WIDTH = 960;
 const GAME_HEIGHT = 540;
 const FLOOR_Y = GAME_HEIGHT * 0.75; // Ocean baseline
 const ROUND_SECONDS = 60;
-const MIC_THRESHOLD_DB = 35; // >=35 dB enables movement and flight thrust (more sensitive)
+const MIC_THRESHOLD_DB = 42; // >=42 dB enables movement and flight
 const MIN_OBSTACLES_PER_ROUND = 15;
 const TARGET_PLATFORMS_PER_ROUND = 50; // ensure at least 50 islands spawn
 const PRESPAWN_RANGE = GAME_WIDTH * 6; // pre-generate far ahead so many are visible in sequence
 
 const PLATFORM_VARIANTS = [
-  { name: "very_thin", minWidth: 80,  maxWidth: 120, gapMin: 40,  gapMax: 100, weight: 0.25 },
-  { name: "thin",       minWidth: 130, maxWidth: 180, gapMin: 60,  gapMax: 130, weight: 0.30 },
-  { name: "medium",     minWidth: 190, maxWidth: 260, gapMin: 80,  gapMax: 160, weight: 0.30 },
-  { name: "big",        minWidth: 280, maxWidth: 380, gapMin: 100, gapMax: 200, weight: 0.15 }
+  { name: "very_thin", minWidth: 80,  maxWidth: 120, gapMin: 120, gapMax: 220, weight: 0.20 },
+  { name: "thin",       minWidth: 130, maxWidth: 180, gapMin: 150, gapMax: 260, weight: 0.35 },
+  { name: "medium",     minWidth: 190, maxWidth: 260, gapMin: 170, gapMax: 300, weight: 0.30 },
+  { name: "big",        minWidth: 280, maxWidth: 380, gapMin: 200, gapMax: 360, weight: 0.15 }
 ];
 
 // Canvas
@@ -62,7 +62,7 @@ class Cow {
     this.velY = 0;
     this.gravity = 1600; // px/s^2
     this.liftScale = 60; // px/s^2 per dB over threshold (more responsive)
-    this.walkSpeed = 180; // px/s world scroll speed (applied only when voice)
+    this.walkSpeed = 240; // px/s world scroll speed (faster)
     this.onGround = false;
     this.inWater = false;
   }
@@ -143,14 +143,20 @@ class Platform {
     this.y = FLOOR_Y - this.height;
     this.visible = true;
     this.hasObstacle = false;
-    this.obstacle = null;
+    this.obstacles = [];
     this.scored = false;
+    this.aerialObstacles = [];
   }
 
   update(dt, speed) {
     this.x -= speed * dt;
     if (this.x + this.width < 0) this.visible = false;
-    if (this.obstacle) this.obstacle.update(dt, speed);
+    for (let i = 0; i < this.obstacles.length; i++) {
+      this.obstacles[i].update(dt, speed);
+    }
+    for (let i = 0; i < this.aerialObstacles.length; i++) {
+      this.aerialObstacles[i].update(dt, speed);
+    }
   }
 
   render(ctx) {
@@ -162,15 +168,16 @@ class Platform {
     ctx.fillRect(this.x - 4, this.y - 10, this.width + 8, 14);
     ctx.restore();
 
-    if (this.obstacle) this.obstacle.render(ctx);
+    for (let i = 0; i < this.obstacles.length; i++) this.obstacles[i].render(ctx);
+    for (let i = 0; i < this.aerialObstacles.length; i++) this.aerialObstacles[i].render(ctx);
   }
 }
 
 class Obstacle {
   constructor(platform) {
     this.platform = platform;
-    this.width = 24 + Math.floor(rng() * 18);
-    this.height = 20 + Math.floor(rng() * 20);
+    this.width = 28 + Math.floor(rng() * 30);
+    this.height = 28 + Math.floor(rng() * 28);
     const margin = 12;
     this.x = platform.x + margin + rng() * Math.max(1, platform.width - margin * 2 - this.width);
     this.y = platform.y - this.height;
@@ -196,11 +203,84 @@ class Obstacle {
   }
 }
 
+class AerialObstacle {
+  constructor(platform) {
+    this.platform = platform;
+    this.width = 18 + Math.floor(rng() * 12);
+    this.height = 14 + Math.floor(rng() * 12);
+    const margin = 24;
+    this.x = platform.x + margin + rng() * Math.max(1, platform.width - margin * 2 - this.width);
+    // Place above platform; clamp fully within screen (with padding)
+    const desiredY = platform.y - (100 + Math.floor(rng() * 140)) - this.height;
+    const minY = 10;
+    const maxY = GAME_HEIGHT - this.height - 10;
+    this.y = Math.max(minY, Math.min(maxY, desiredY));
+    this.visible = true;
+  }
+
+  update(dt, speed) {
+    this.x -= speed * dt;
+    if (this.x + this.width < 0) this.visible = false;
+  }
+
+  render(ctx) {
+    ctx.save();
+    ctx.fillStyle = "#f87171";
+    ctx.strokeStyle = "#7f1d1d";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(this.x + this.width / 2, this.y);
+    ctx.lineTo(this.x + this.width, this.y + this.height / 2);
+    ctx.lineTo(this.x + this.width / 2, this.y + this.height);
+    ctx.lineTo(this.x, this.y + this.height / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+class AirObstacle {
+  constructor(x) {
+    this.width = 20 + Math.floor(rng() * 18);
+    this.height = 16 + Math.floor(rng() * 14);
+    this.x = x;
+    // Random vertical band in the air, not too close to floor or ceiling
+    const minY = 40;
+    const maxY = FLOOR_Y - 120;
+    this.y = minY + Math.floor(rng() * Math.max(1, maxY - minY));
+    this.visible = true;
+  }
+
+  update(dt, speed) {
+    this.x -= speed * dt;
+    if (this.x + this.width < 0) this.visible = false;
+  }
+
+  render(ctx) {
+    ctx.save();
+    ctx.fillStyle = "#fb7185";
+    ctx.strokeStyle = "#7f1d1d";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(this.x + this.width / 2, this.y);
+    ctx.lineTo(this.x + this.width, this.y + this.height / 2);
+    ctx.lineTo(this.x + this.width / 2, this.y + this.height);
+    ctx.lineTo(this.x, this.y + this.height / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 // World
 let cow = new Cow();
 let platforms = [];
 let nextPlatformX = GAME_WIDTH * 0.6;
 let obstacleCountThisRound = 0;
+let platformsSpawned = 0; // number of platforms created this round
+let airObstacles = []; // free-floating obstacles in gaps
 
 function resetGame() {
   gameStarted = true;
@@ -212,6 +292,8 @@ function resetGame() {
   platforms = [];
   nextPlatformX = GAME_WIDTH * 0.5;
   obstacleCountThisRound = 0;
+  platformsSpawned = 0;
+  airObstacles = [];
   cow = new Cow();
   centerOverlay.classList.remove("visible");
   centerOverlay.classList.add("hidden");
@@ -250,20 +332,46 @@ function maybeSpawn() {
     const gap = chosen.gapMin + Math.floor(rng() * (chosen.gapMax - chosen.gapMin + 1));
     const p = new Platform(nextPlatformX, width);
 
-    // At least 10 obstacles in 60s: bias obstacle probability to guarantee
+    // At least N obstacles in 60s: bias obstacle probability to guarantee
     const remainingTime = Math.max(0, ROUND_SECONDS - elapsed);
     const need = Math.max(0, MIN_OBSTACLES_PER_ROUND - obstacleCountThisRound);
     const estPlatformsRemaining = Math.max(need, Math.ceil(remainingTime));
-    const baseProbability = 0.45; // higher base chance for more obstacles
-    const forceProbability = need > 0 ? Math.min(0.9, Math.max(baseProbability, need / Math.max(1, estPlatformsRemaining))) : baseProbability;
+    const baseProbability = 0.65; // higher base chance for more obstacles
+    const forceProbability = need > 0 ? Math.min(0.95, Math.max(baseProbability, need / Math.max(1, estPlatformsRemaining))) : baseProbability;
     if (rng() < forceProbability) {
       p.hasObstacle = true;
-      p.obstacle = new Obstacle(p);
-      obstacleCountThisRound += 1;
+      // Place 1-3 obstacles depending on width
+      const maxObstacles = p.width > 260 ? 3 : p.width > 180 ? 2 : 1;
+      const count = 1 + (rng() < 0.6 && maxObstacles >= 2 ? 1 : 0) + (rng() < 0.3 && maxObstacles >= 3 ? 1 : 0);
+      for (let k = 0; k < count; k++) {
+        p.obstacles.push(new Obstacle(p));
+        obstacleCountThisRound += 1;
+      }
+    }
+
+    // After 7 islands crossed (score), add small aerial obstacles above platforms more often
+    if (score >= 7) {
+      const aerialChance = p.width >= 180 ? 0.65 : 0.45;
+      if (rng() < aerialChance) {
+        const aerialCount = rng() < 0.35 && p.width >= 240 ? 2 : 1;
+        for (let a = 0; a < aerialCount; a++) {
+          p.aerialObstacles.push(new AerialObstacle(p));
+        }
+      }
     }
 
     platforms.push(p);
     nextPlatformX += width + gap;
+    // Spawn free-floating air obstacles in the center of the gap
+    const gapMidX = nextPlatformX - Math.floor(gap / 2);
+    if (gap >= 140 && rng() < 0.6) {
+      const numAir = rng() < 0.4 ? 2 : 1;
+      for (let n = 0; n < numAir; n++) {
+        const jitter = (rng() - 0.5) * gap * 0.3;
+        airObstacles.push(new AirObstacle(gapMidX + jitter));
+      }
+    }
+    platformsSpawned += 1;
   }
 }
 
@@ -271,8 +379,35 @@ function maybeSpawn() {
 function checkObstacleCollision() {
   for (let i = 0; i < platforms.length; i++) {
     const p = platforms[i];
-    if (!p.visible || !p.obstacle) continue;
-    const o = p.obstacle;
+    if (!p.visible) continue;
+    for (let j = 0; j < p.obstacles.length; j++) {
+      const o = p.obstacles[j];
+      if (
+        cow.x < o.x + o.width &&
+        cow.x + cow.width > o.x &&
+        cow.y < o.y + o.height &&
+        cow.y + cow.height > o.y
+      ) {
+        endGame(false, `Ouch! Hit spikes after ${score} islands`);
+        return;
+      }
+    }
+    for (let j = 0; j < p.aerialObstacles.length; j++) {
+      const ao = p.aerialObstacles[j];
+      if (
+        cow.x < ao.x + ao.width &&
+        cow.x + cow.width > ao.x &&
+        cow.y < ao.y + ao.height &&
+        cow.y + cow.height > ao.y
+      ) {
+        endGame(false, `Ouch! Hit spikes after ${score} islands`);
+        return;
+      }
+    }
+  }
+  // Check free-floating air obstacles
+  for (let k = 0; k < airObstacles.length; k++) {
+    const o = airObstacles[k];
     if (
       cow.x < o.x + o.width &&
       cow.x + cow.width > o.x &&
@@ -293,7 +428,7 @@ function updateScore() {
       p.scored = true;
       score += 1;
       // Bonus for obstacle platforms
-      if (p.hasObstacle) score += 1;
+      if (p.hasObstacle) score += Math.min(2, p.obstacles.length);
     }
   }
   scoreEl.textContent = `Score: ${score}`;
@@ -364,7 +499,10 @@ function update(dt) {
   const speaking = lastDb >= MIC_THRESHOLD_DB;
   const speed = speaking ? cow.walkSpeed : 0;
   for (let i = 0; i < platforms.length; i++) platforms[i].update(dt, speed);
+  // Update free-floating air obstacles
+  for (let i = 0; i < airObstacles.length; i++) airObstacles[i].update(dt, speed);
   platforms = platforms.filter(p => p.visible);
+  airObstacles = airObstacles.filter(o => o.visible);
   maybeSpawn();
 
   // Cow physics and collisions
@@ -377,6 +515,7 @@ function render() {
   ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
   renderBackground();
   for (let i = 0; i < platforms.length; i++) platforms[i].render(ctx);
+  for (let i = 0; i < airObstacles.length; i++) airObstacles[i].render(ctx);
   cow.render(ctx);
 }
 
@@ -404,6 +543,8 @@ async function setupAudio() {
   analyser = audioContext.createAnalyser();
   analyser.fftSize = 2048;
   source.connect(analyser);
+
+  // Speech recognition removed per user request; movement relies on decibel threshold only
 }
 
 function getDecibels() {
