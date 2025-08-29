@@ -5,8 +5,17 @@ const GAME_WIDTH = 960;
 const GAME_HEIGHT = 540;
 const FLOOR_Y = GAME_HEIGHT * 0.75; // Ocean baseline
 const ROUND_SECONDS = 60;
-const MIC_THRESHOLD_DB = 40; // >=40 dB enables movement and flight thrust
-const MIN_OBSTACLES_PER_ROUND = 10;
+const MIC_THRESHOLD_DB = 35; // >=35 dB enables movement and flight thrust (more sensitive)
+const MIN_OBSTACLES_PER_ROUND = 15;
+const TARGET_PLATFORMS_PER_ROUND = 50; // ensure at least 50 islands spawn
+const PRESPAWN_RANGE = GAME_WIDTH * 6; // pre-generate far ahead so many are visible in sequence
+
+const PLATFORM_VARIANTS = [
+  { name: "very_thin", minWidth: 80,  maxWidth: 120, gapMin: 40,  gapMax: 100, weight: 0.25 },
+  { name: "thin",       minWidth: 130, maxWidth: 180, gapMin: 60,  gapMax: 130, weight: 0.30 },
+  { name: "medium",     minWidth: 190, maxWidth: 260, gapMin: 80,  gapMax: 160, weight: 0.30 },
+  { name: "big",        minWidth: 280, maxWidth: 380, gapMin: 100, gapMax: 200, weight: 0.15 }
+];
 
 // Canvas
 const canvas = document.getElementById("game");
@@ -52,7 +61,7 @@ class Cow {
     this.height = 40;
     this.velY = 0;
     this.gravity = 1600; // px/s^2
-    this.liftScale = 55; // px/s^2 per dB over threshold (more responsive)
+    this.liftScale = 60; // px/s^2 per dB over threshold (more responsive)
     this.walkSpeed = 180; // px/s world scroll speed (applied only when voice)
     this.onGround = false;
     this.inWater = false;
@@ -220,20 +229,33 @@ function resetGame() {
   // Advance the next spawn position after the starting platform and an initial gap
   const initialGap = 180;
   nextPlatformX = startPlatform.x + startPlatform.width + initialGap;
+
+  // Pre-spawn a large set so the run has many islands from the start
+  maybeSpawn();
 }
 
 // Platform/Obstacle generation
 function maybeSpawn() {
-  while (nextPlatformX < GAME_WIDTH * 1.6) {
-    const width = 140 + Math.floor(rng() * 200);
-    const gap = 100 + Math.floor(rng() * 260); // Unequal gaps
+  // Pre-generate much further ahead to ensure many islands over time
+  const spawnLimit = Math.max(GAME_WIDTH * 1.6, PRESPAWN_RANGE);
+  while (nextPlatformX < spawnLimit) {
+    // Choose a platform variant by weight
+    let r = rng();
+    let chosen = PLATFORM_VARIANTS[PLATFORM_VARIANTS.length - 1];
+    for (let i = 0, acc = 0; i < PLATFORM_VARIANTS.length; i++) {
+      acc += PLATFORM_VARIANTS[i].weight;
+      if (r <= acc) { chosen = PLATFORM_VARIANTS[i]; break; }
+    }
+    const width = chosen.minWidth + Math.floor(rng() * (chosen.maxWidth - chosen.minWidth + 1));
+    const gap = chosen.gapMin + Math.floor(rng() * (chosen.gapMax - chosen.gapMin + 1));
     const p = new Platform(nextPlatformX, width);
 
     // At least 10 obstacles in 60s: bias obstacle probability to guarantee
     const remainingTime = Math.max(0, ROUND_SECONDS - elapsed);
     const need = Math.max(0, MIN_OBSTACLES_PER_ROUND - obstacleCountThisRound);
     const estPlatformsRemaining = Math.max(need, Math.ceil(remainingTime));
-    const forceProbability = need > 0 ? Math.min(0.8, need / Math.max(1, estPlatformsRemaining)) : 0.25;
+    const baseProbability = 0.45; // higher base chance for more obstacles
+    const forceProbability = need > 0 ? Math.min(0.9, Math.max(baseProbability, need / Math.max(1, estPlatformsRemaining))) : baseProbability;
     if (rng() < forceProbability) {
       p.hasObstacle = true;
       p.obstacle = new Obstacle(p);
