@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Moo Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+    <div id="ui">
+        <div id="top-bar">
+            <div id="timer">60</div>
+            <div id="score">Score: 0</div>
+            <div id="best">Best: 0</div>
+        </div>
+        <div id="bottom-bar">
+            <div id="mic-label">Mic</div>
+            <div id="mic-bar">
+                <div id="mic-fill"></div>
+                <div id="mic-threshold"></div>
+            </div>
+            <button id="mute-btn" aria-label="Toggle mute">🔇</button>
+        </div>
+        <div id="center-overlay" class="overlay visible">
+            <h1>Moo Across</h1>
+            <p>Allow microphone access and Moo (or shout) to jump.</p>
+            <button id="start-btn">Start</button>
+            <p class="small">Tip: Louder = higher jump. Survive 60 seconds.</p>
+        </div>
+        <div id="result-overlay" class="overlay hidden">
+            <h1 id="result-title">Game Over</h1>
+            <p id="result-sub"></p>
+            <div class="result-buttons">
+                <button id="retry-btn">Retry</button>
+            </div>
+        </div>
+    </div>
+    <canvas id="game" width="960" height="540"></canvas>
+
+    <script src="./main.js"></script>
+</body>
+<!--
+    Moo Game: Voice-jump across uneven islands. HTML5 Canvas + Web Audio API.
+-->
+</html>
+
+

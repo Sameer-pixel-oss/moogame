@@ -1,0 +1,122 @@
+:root {
+  --bg: #0f172a;
+  --panel: #111827;
+  --text: #e5e7eb;
+  --accent: #22c55e;
+  --danger: #ef4444;
+  --muted: #64748b;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Nunito', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  display: grid;
+  place-items: center;
+}
+
+#game {
+  width: min(96vw, 960px);
+  height: calc(min(96vw, 960px) * 9 / 16);
+  background: linear-gradient(#93c5fd 0%, #60a5fa 30%, #3b82f6 100%);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+#ui {
+  position: absolute;
+  width: min(96vw, 960px);
+  height: calc(min(96vw, 960px) * 9 / 16);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  pointer-events: none;
+}
+
+#top-bar, #bottom-bar { pointer-events: auto; }
+
+#top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+
+#timer { font-weight: 900; font-size: 22px; }
+#score { font-weight: 700; }
+#best { color: var(--muted); }
+
+#bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+#mic-label { color: var(--muted); font-weight: 700; }
+#mic-bar {
+  position: relative;
+  flex: 1;
+  height: 12px;
+  background: #0b1220;
+  border-radius: 999px;
+  overflow: hidden;
+}
+#mic-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 0%;
+  background: linear-gradient(90deg, #34d399, #22c55e);
+}
+#mic-threshold {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  left: 45%;
+  background: rgba(255,255,255,0.6);
+}
+
+#mute-btn {
+  pointer-events: auto;
+  border: 0;
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.55);
+}
+.overlay.hidden { display: none; }
+.overlay.visible { display: grid; }
+.overlay h1 { margin: 0 0 10px; font-size: 38px; }
+.overlay p { margin: 0 0 14px; }
+.overlay .small { color: var(--muted); font-size: 14px; }
+.overlay button {
+  pointer-events: auto;
+  background: var(--accent);
+  color: #052e16;
+  font-weight: 900;
+  border: 0;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.result-buttons { display: flex; gap: 10px; justify-content: center; }
+
+@media (max-width: 640px) {
+  #timer { font-size: 18px; }
+  #score { font-size: 14px; }
+  #best { font-size: 12px; }
+}
+
+
